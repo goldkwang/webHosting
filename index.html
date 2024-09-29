@@ -20,7 +20,7 @@
 <body>
     <video id="video" autoplay playsinline></video>
     <button id="frontButton">전시작</button>
-    <button id="backButton">후시작</button>
+    <button id="backButton">1후시작</button>
     <a id="downloadLink" href="#" download>다운</a>
 
     <script>
@@ -99,11 +99,11 @@
         backButton.addEventListener('click', async () => {
             if (isRecording) {
                 mediaRecorder.stop(); // 녹화 정지
-                backButton.textContent = '후시작'; // 버튼 텍스트 변경
+                backButton.textContent = '1후시작'; // 버튼 텍스트 변경
                 isRecording = false;
             } else {
                 await startRecording('environment'); // 후면 카메라 초기화
-                backButton.textContent = '후정지'; // 버튼 텍스트 변경
+                backButton.textContent = '1후정지'; // 버튼 텍스트 변경
                 downloadLink.style.display = 'none'; // 다운로드 링크 숨기기
             }
         });
