@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카메라 촬영 예제</title>
+    <link rel="manifest" href="manifest.json"> <!-- Manifest 파일 링크 -->
+    <style>
+        #video {
+            border: 1px solid black;
+            width: 100%;
+            max-width: 60px;
+        }
+        #downloadLink {
+            display: none; /* 시작할 때는 숨김 */
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>카메라 촬영</h1>
+    <video id="video" autoplay playsinline></video>
+    <button id="frontButton">전면 시작</button>
+    <button id="backButton">후면 시작</button>
+    <a id="downloadLink" href="#" download>비디오 다운로드</a>
+
+    <script>
+        const video = document.getElementById('video');
+        const frontButton = document.getElementById('frontButton');
+        const backButton = document.getElementById('backButton');
+        const downloadLink = document.getElementById('downloadLink');
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+        let currentStream;
+
+        // 카메라 스트림을 가져옵니다.
+        async function initCamera(facingMode) {
+            const constraints = {
+                video: { facingMode: facingMode }
+            };
+            try {
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
+
+                mediaRecorder = new MediaRecorder(currentStream);
+                mediaRecorder.ondataavailable = handleDataAvailable;
+                mediaRecorder.onstop = handleStop;
+            } catch (error) {
+                console.error("카메라 초기화 오류:", error);
+                alert("카메라를 사용할 수 없습니다. 권한을 확인하세요.");
+            }
+        }
+
+        function handleDataAvailable(event) {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        }
+
+        function handleStop() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            downloadLink.href = url; // Blob URL 설정
+            downloadLink.download = 'recording_' + new Date().toISOString() + '.webm'; // 파일 이름 설정
+            downloadLink.style.display = 'block'; // 다운로드 링크 표시
+            downloadLink.textContent = '비디오 다운로드'; // 링크 텍스트 설정
+
+            // 녹화가 끝난 후 recordedChunks 초기화
+            recordedChunks = [];
+        }
+
+        async function startRecording(facingMode) {
+            await initCamera(facingMode);
+            mediaRecorder.start();
+            isRecording = true;
+        }
+
+        frontButton.addEventListener('click', async () => {
+            if (isRecording) {
+                mediaRecorder.stop(); // 녹화 정지
+                frontButton.textContent = '전면 시작'; // 버튼 텍스트 변경
+                isRecording = false;
+            } else {
+                await startRecording('user'); // 전면 카메라 초기화
+                frontButton.textContent = '전면 정지'; // 버튼 텍스트 변경
+                downloadLink.style.display = 'none'; // 다운로드 링크 숨기기
+            }
+        });
+
+        backButton.addEventListener('click', async () => {
+            if (isRecording) {
+                mediaRecorder.stop(); // 녹화 정지
+                backButton.textContent = '후면 시작'; // 버튼 텍스트 변경
+                isRecording = false;
+            } else {
+                await startRecording('environment'); // 후면 카메라 초기화
+                backButton.textContent = '후면 정지'; // 버튼 텍스트 변경
+                downloadLink.style.display = 'none'; // 다운로드 링크 숨기기
+            }
+        });
+    </script>
+</body>
+</html>
