@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>고화질 녹화 테스트</title>
-    <link rel="manifest" href="manifest.json"> <!-- Manifest 파일 링크 -->
+    <link rel="manifest" href="manifest.json">
     <style>
         #video {
             border: 1px solid black;
@@ -12,7 +12,7 @@
             max-width: 6px; /* 비디오 크기 조정 */
         }
         #downloadLink {
-            display: none; /* 시작할 때는 숨김 */
+            display: none;
             margin-top: 10px;
         }
     </style>
@@ -20,7 +20,7 @@
 <body>
     <video id="video" autoplay playsinline></video>
     <button id="frontButton">전시작</button>
-    <button id="backButton">5후시작</button>
+    <button id="backButton">6후시작</button>
     <a id="downloadLink" href="#" download>다운로드</a>
 
     <script>
@@ -33,14 +33,13 @@
         let isRecording = false;
         let currentStream;
 
-        // 카메라 스트림을 가져옵니다.
         async function initCamera(facingMode) {
             const constraints = {
                 video: {
                     facingMode: facingMode,
-                    width: { ideal: 1280 }, // 고화질 너비 설정
-                    height: { ideal: 720 }, // 고화질 높이 설정
-                    frameRate: { ideal: 30, max: 30 } // 프레임 속도를 30으로 설정
+                    width: { ideal: 1920 }, // Full HD 너비
+                    height: { ideal: 1080 }, // Full HD 높이
+                    frameRate: { ideal: 30, max: 60 } // 프레임 속도 증가
                 }
             };
             try {
@@ -51,9 +50,10 @@
                 currentStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = currentStream;
 
+                const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm;codecs=h264';
                 mediaRecorder = new MediaRecorder(currentStream, {
-                    mimeType: 'video/webm; codecs=vp9', // VP9 코덱 사용
-                    videoBitsPerSecond: 2000000 // 비트레이트를 2 Mbps로 설정
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 8000000 // 8 Mbps로 증가
                 });
                 mediaRecorder.ondataavailable = handleDataAvailable;
                 mediaRecorder.onstop = handleStop;
@@ -70,45 +70,41 @@
         }
 
         function handleStop() {
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
             const url = URL.createObjectURL(blob);
-            downloadLink.href = url; // Blob URL 설정
-            downloadLink.download = 'recording_' + new Date().toISOString() + '.webm'; // 파일 이름 설정
-            
-            // 링크 클릭하여 자동 다운로드
+            downloadLink.href = url;
+            downloadLink.download = `recording_${new Date().toISOString()}.${mediaRecorder.mimeType.split('/')[1]}`;
             downloadLink.click();
-
-            // 녹화가 끝난 후 recordedChunks 초기화
             recordedChunks = [];
         }
 
         async function startRecording(facingMode) {
             await initCamera(facingMode);
-            mediaRecorder.start();
+            mediaRecorder.start(1000); // 1초마다 데이터 전송
             isRecording = true;
         }
 
         frontButton.addEventListener('click', async () => {
             if (isRecording) {
-                mediaRecorder.stop(); // 녹화 정지
-                frontButton.textContent = '전시작'; // 버튼 텍스트 변경
+                mediaRecorder.stop();
+                frontButton.textContent = '전시작';
                 isRecording = false;
             } else {
-                await startRecording('user'); // 전면 카메라 초기화
-                frontButton.textContent = '전정지'; // 버튼 텍스트 변경
-                downloadLink.style.display = 'none'; // 다운로드 링크 숨기기
+                await startRecording('user');
+                frontButton.textContent = '전정지';
+                downloadLink.style.display = 'none';
             }
         });
 
         backButton.addEventListener('click', async () => {
             if (isRecording) {
-                mediaRecorder.stop(); // 녹화 정지
-                backButton.textContent = '5후시작'; // 버튼 텍스트 변경
+                mediaRecorder.stop();
+                backButton.textContent = '6후시작';
                 isRecording = false;
             } else {
-                await startRecording('environment'); // 후면 카메라 초기화
-                backButton.textContent = '5후정지'; // 버튼 텍스트 변경
-                downloadLink.style.display = 'none'; // 다운로드 링크 숨기기
+                await startRecording('environment');
+                backButton.textContent = '6후정지';
+                downloadLink.style.display = 'none';
             }
         });
     </script>
