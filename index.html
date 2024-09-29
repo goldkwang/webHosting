@@ -24,7 +24,7 @@
 <body>
     <video id="video" autoplay playsinline></video>
     <button id="frontButton">전시작</button>
-    <button id="backButton">7후시작</button>
+    <button id="backButton">8후시작</button>
     <a id="downloadLink" href="#" download>다운로드</a>
     <div id="errorMessage"></div>
 
@@ -55,7 +55,7 @@
 
                 currentStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = currentStream;
-                errorMessage.textContent = ''; // 성공 시 에러 메시지 초기화
+                errorMessage.textContent = '';
 
                 const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm;codecs=h264';
                 mediaRecorder = new MediaRecorder(currentStream, {
@@ -64,9 +64,12 @@
                 });
                 mediaRecorder.ondataavailable = handleDataAvailable;
                 mediaRecorder.onstop = handleStop;
+
+                return true; // 카메라 초기화 성공
             } catch (error) {
                 console.error("카메라 초기화 오류:", error);
                 errorMessage.textContent = `카메라 오류: ${error.message}. 카메라 권한을 확인하세요.`;
+                return false; // 카메라 초기화 실패
             }
         }
 
@@ -87,18 +90,27 @@
 
         async function startRecording(facingMode) {
             try {
-                await initCamera(facingMode);
+                const initSuccess = await initCamera(facingMode);
+                if (!initSuccess) {
+                    throw new Error("카메라 초기화 실패");
+                }
+                if (!mediaRecorder) {
+                    throw new Error("MediaRecorder가 초기화되지 않았습니다.");
+                }
                 mediaRecorder.start(1000);
                 isRecording = true;
             } catch (error) {
                 console.error("녹화 시작 오류:", error);
                 errorMessage.textContent = `녹화 시작 오류: ${error.message}`;
+                isRecording = false;
             }
         }
 
         frontButton.addEventListener('click', async () => {
             if (isRecording) {
-                mediaRecorder.stop();
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    mediaRecorder.stop();
+                }
                 frontButton.textContent = '전시작';
                 isRecording = false;
             } else {
@@ -110,12 +122,14 @@
 
         backButton.addEventListener('click', async () => {
             if (isRecording) {
-                mediaRecorder.stop();
-                backButton.textContent = '7후시작';
+                if (mediaRecorder && mediaRecorder.state === "recording") {
+                    mediaRecorder.stop();
+                }
+                backButton.textContent = '8후시작';
                 isRecording = false;
             } else {
                 await startRecording('environment');
-                backButton.textContent = '7후정지';
+                backButton.textContent = '8후정지';
                 downloadLink.style.display = 'none';
             }
         });
