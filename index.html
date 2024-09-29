@@ -9,10 +9,14 @@
         #video {
             border: 1px solid black;
             width: 100%;
-            max-width: 6px; /* 비디오 크기 조정 */
+            max-width: 6px;
         }
         #downloadLink {
             display: none;
+            margin-top: 10px;
+        }
+        #errorMessage {
+            color: red;
             margin-top: 10px;
         }
     </style>
@@ -20,14 +24,16 @@
 <body>
     <video id="video" autoplay playsinline></video>
     <button id="frontButton">전시작</button>
-    <button id="backButton">6후시작</button>
+    <button id="backButton">7후시작</button>
     <a id="downloadLink" href="#" download>다운로드</a>
+    <div id="errorMessage"></div>
 
     <script>
         const video = document.getElementById('video');
         const frontButton = document.getElementById('frontButton');
         const backButton = document.getElementById('backButton');
         const downloadLink = document.getElementById('downloadLink');
+        const errorMessage = document.getElementById('errorMessage');
         let mediaRecorder;
         let recordedChunks = [];
         let isRecording = false;
@@ -37,9 +43,9 @@
             const constraints = {
                 video: {
                     facingMode: facingMode,
-                    width: { ideal: 1920 }, // Full HD 너비
-                    height: { ideal: 1080 }, // Full HD 높이
-                    frameRate: { ideal: 30, max: 60 } // 프레임 속도 증가
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 30, max: 60 }
                 }
             };
             try {
@@ -49,17 +55,18 @@
 
                 currentStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = currentStream;
+                errorMessage.textContent = ''; // 성공 시 에러 메시지 초기화
 
                 const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm;codecs=h264';
                 mediaRecorder = new MediaRecorder(currentStream, {
                     mimeType: mimeType,
-                    videoBitsPerSecond: 8000000 // 8 Mbps로 증가
+                    videoBitsPerSecond: 8000000
                 });
                 mediaRecorder.ondataavailable = handleDataAvailable;
                 mediaRecorder.onstop = handleStop;
             } catch (error) {
                 console.error("카메라 초기화 오류:", error);
-                alert("카메라를 사용할 수 없습니다. 권한을 확인하세요.");
+                errorMessage.textContent = `카메라 오류: ${error.message}. 카메라 권한을 확인하세요.`;
             }
         }
 
@@ -74,14 +81,19 @@
             const url = URL.createObjectURL(blob);
             downloadLink.href = url;
             downloadLink.download = `recording_${new Date().toISOString()}.${mediaRecorder.mimeType.split('/')[1]}`;
-            downloadLink.click();
+            downloadLink.style.display = 'inline';
             recordedChunks = [];
         }
 
         async function startRecording(facingMode) {
-            await initCamera(facingMode);
-            mediaRecorder.start(1000); // 1초마다 데이터 전송
-            isRecording = true;
+            try {
+                await initCamera(facingMode);
+                mediaRecorder.start(1000);
+                isRecording = true;
+            } catch (error) {
+                console.error("녹화 시작 오류:", error);
+                errorMessage.textContent = `녹화 시작 오류: ${error.message}`;
+            }
         }
 
         frontButton.addEventListener('click', async () => {
@@ -99,12 +111,23 @@
         backButton.addEventListener('click', async () => {
             if (isRecording) {
                 mediaRecorder.stop();
-                backButton.textContent = '6후시작';
+                backButton.textContent = '7후시작';
                 isRecording = false;
             } else {
                 await startRecording('environment');
-                backButton.textContent = '6후정지';
+                backButton.textContent = '7후정지';
                 downloadLink.style.display = 'none';
+            }
+        });
+
+        // 페이지 로드 시 카메라 권한 확인
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: true });
+                errorMessage.textContent = '카메라 권한이 허용되었습니다.';
+            } catch (error) {
+                console.error("카메라 권한 오류:", error);
+                errorMessage.textContent = '카메라 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.';
             }
         });
     </script>
