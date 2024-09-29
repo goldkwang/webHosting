@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>테스트</title>
+    <title>고화질 녹화 테스트</title>
     <link rel="manifest" href="manifest.json"> <!-- Manifest 파일 링크 -->
     <style>
         #video {
@@ -20,8 +20,8 @@
 <body>
     <video id="video" autoplay playsinline></video>
     <button id="frontButton">전시작</button>
-    <button id="backButton">4후시작</button>
-    <a id="downloadLink" href="#" download>다운</a>
+    <button id="backButton">5후시작</button>
+    <a id="downloadLink" href="#" download>다운로드</a>
 
     <script>
         const video = document.getElementById('video');
@@ -39,7 +39,8 @@
                 video: {
                     facingMode: facingMode,
                     width: { ideal: 1280 }, // 고화질 너비 설정
-                    height: { ideal: 720 }   // 고화질 높이 설정
+                    height: { ideal: 720 }, // 고화질 높이 설정
+                    frameRate: { ideal: 30, max: 30 } // 프레임 속도를 30으로 설정
                 }
             };
             try {
@@ -50,7 +51,10 @@
                 currentStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = currentStream;
 
-                mediaRecorder = new MediaRecorder(currentStream);
+                mediaRecorder = new MediaRecorder(currentStream, {
+                    mimeType: 'video/webm; codecs=vp9', // VP9 코덱 사용
+                    videoBitsPerSecond: 2000000 // 비트레이트를 2 Mbps로 설정
+                });
                 mediaRecorder.ondataavailable = handleDataAvailable;
                 mediaRecorder.onstop = handleStop;
             } catch (error) {
@@ -99,11 +103,11 @@
         backButton.addEventListener('click', async () => {
             if (isRecording) {
                 mediaRecorder.stop(); // 녹화 정지
-                backButton.textContent = '4후시작'; // 버튼 텍스트 변경
+                backButton.textContent = '5후시작'; // 버튼 텍스트 변경
                 isRecording = false;
             } else {
                 await startRecording('environment'); // 후면 카메라 초기화
-                backButton.textContent = '4후정지'; // 버튼 텍스트 변경
+                backButton.textContent = '5후정지'; // 버튼 텍스트 변경
                 downloadLink.style.display = 'none'; // 다운로드 링크 숨기기
             }
         });
