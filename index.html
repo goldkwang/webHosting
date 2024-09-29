@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MP4 녹화 테스트</title>
+    <title>고화질 녹화 테스트</title>
+    <link rel="manifest" href="manifest.json"> <!-- Manifest 파일 링크 -->
     <style>
         #video {
             border: 1px solid black;
             width: 100%;
-            max-width: 6px;
+            max-width: 600px; /* 비디오 크기 조정 */
         }
         #downloadLink {
             display: none; /* 시작할 때는 숨김 */
@@ -18,33 +19,42 @@
 </head>
 <body>
     <video id="video" autoplay playsinline></video>
-    <button id="startButton">녹화 시작</button>
-    <button id="stopButton" disabled>녹화 정지</button>
+    <button id="frontButton">전시작</button>
+    <button id="backButton">2후시작</button>
     <a id="downloadLink" href="#" download>다운로드</a>
 
     <script>
         const video = document.getElementById('video');
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
+        const frontButton = document.getElementById('frontButton');
+        const backButton = document.getElementById('backButton');
         const downloadLink = document.getElementById('downloadLink');
         let mediaRecorder;
         let recordedChunks = [];
+        let isRecording = false;
+        let currentStream;
 
-        async function initCamera() {
+        // 카메라 스트림을 가져옵니다.
+        async function initCamera(facingMode) {
             const constraints = {
                 video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    facingMode: facingMode,
+                    width: { ideal: 1920 }, // 고화질 너비 설정 (Full HD)
+                    height: { ideal: 1080 }, // 고화질 높이 설정 (Full HD)
+                    frameRate: { ideal: 30 } // 프레임 속도 설정
                 }
             };
             try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
 
-                mediaRecorder = new MediaRecorder(stream, {
-                    mimeType: 'video/mp4' // MP4 형식으로 설정
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
+
+                mediaRecorder = new MediaRecorder(currentStream, {
+                    mimeType: 'video/webm; codecs=vp9', // VP9 코덱 사용
+                    videoBitsPerSecond: 2500000 // 비트레이트 설정 (2.5 Mbps)
                 });
-
                 mediaRecorder.ondataavailable = handleDataAvailable;
                 mediaRecorder.onstop = handleStop;
             } catch (error) {
@@ -60,25 +70,46 @@
         }
 
         function handleStop() {
-            const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
-            downloadLink.href = url;
-            downloadLink.download = 'recording_' + new Date().toISOString() + '.mp4';
-            downloadLink.style.display = 'block'; // 다운로드 링크 표시
+            downloadLink.href = url; // Blob URL 설정
+            downloadLink.download = 'recording_' + new Date().toISOString() + '.webm'; // 파일 이름 설정
+            
+            // 링크 클릭하여 자동 다운로드
+            downloadLink.click();
+
+            // 녹화가 끝난 후 recordedChunks 초기화
             recordedChunks = [];
         }
 
-        startButton.addEventListener('click', async () => {
-            await initCamera();
+        async function startRecording(facingMode) {
+            await initCamera(facingMode);
             mediaRecorder.start();
-            startButton.disabled = true;
-            stopButton.disabled = false;
+            isRecording = true;
+        }
+
+        frontButton.addEventListener('click', async () => {
+            if (isRecording) {
+                mediaRecorder.stop(); // 녹화 정지
+                frontButton.textContent = '전시작'; // 버튼 텍스트 변경
+                isRecording = false;
+            } else {
+                await startRecording('user'); // 전면 카메라 초기화
+                frontButton.textContent = '전정지'; // 버튼 텍스트 변경
+                downloadLink.style.display = 'none'; // 다운로드 링크 숨기기
+            }
         });
 
-        stopButton.addEventListener('click', () => {
-            mediaRecorder.stop();
-            startButton.disabled = false;
-            stopButton.disabled = true;
+        backButton.addEventListener('click', async () => {
+            if (isRecording) {
+                mediaRecorder.stop(); // 녹화 정지
+                backButton.textContent = '2후시작'; // 버튼 텍스트 변경
+                isRecording = false;
+            } else {
+                await startRecording('environment'); // 후면 카메라 초기화
+                backButton.textContent = '2후정지'; // 버튼 텍스트 변경
+                downloadLink.style.display = 'none'; // 다운로드 링크 숨기기
+            }
         });
     </script>
 </body>
